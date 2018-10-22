@@ -69,6 +69,10 @@ public:
     void Optimization();
     void ifStartSfm();
 
+    void Initialparameters();
+
+    void ImuPreintergration(vector<Vector3d>& acc,vector<Vector3d>& omiga,vector<double>& timestamp,int i);
+
     void getMatchedFeatures(int frontframe,int backframe,vector<pair<Point2f,Point2f>> &matchedfeatures);
 
     void getParallax(double &parallax,vector<pair<Point2f,Point2f>> matchedfeatures);
@@ -86,9 +90,21 @@ public:
 
 
     bool StartInitial_flag,Initialized_flag;
+
+
+    vector<Quaterniond> pre_intergration_gama;
+    vector<Vector3d> pre_intergration_alpha;
+    vector<Vector3d> pre_intergration_belta;
+
+    vector<MatrixXd> pre_jacobians;
+    vector<MatrixXd> pre_coariances;
+
+
     Feature_Track feature_Track;
     vector<Frame> frames;
     vector<FeaturePoints> featurePoints;
     SolvePose solvePose;
+
+    Matrix<double,12,12> noise;
 
 };

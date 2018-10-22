@@ -34,4 +34,5 @@ extern int NUMOFFRAMESTOINIT;
 extern int STARTFRAME;
 extern bool SHOWIMG;
 extern bool IFSHOWPOINTS;
+extern double ACC_N,GYR_N,ACC_B_N,GYR_B_N;
 void readParameters(string configdir);

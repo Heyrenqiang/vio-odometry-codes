@@ -15,6 +15,8 @@
 #include <opencv2/core/eigen.hpp>
 #include<pangolin/pangolin.h>
 #include<sophus/se3.hpp>
+#include<stdlib.h>
+#include<stdio.h>
 
 #include <opencv2/highgui/highgui.hpp>
 using namespace std;
@@ -28,6 +30,9 @@ public:
     DataReading(const string imgdir,const string timestampdir);
     void readImage(vector<string> &strimage, vector<double> &timestamps);
     void readCameraParameters();
+
+    static void readImudata(const string filedir,vector<Vector3d>& acc,vector<Vector3d>& omiga,
+                            vector<double>& imutimestamps);
     static void writeFramepose();
     static void writePointscoordinates();
     static void writeIMUpose();

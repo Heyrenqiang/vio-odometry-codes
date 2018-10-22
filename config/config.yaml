@@ -82,6 +82,10 @@ visualize_imu_forward: 0        # output imu forward propogation to achieve low 
 visualize_camera_size: 0.4      # size of camera marker in RVIZ
 #other
 numofframestoinit: 10           #initial sfm frames
-startframe: 300                 #startframe to start initial
+startframe: 8                 #startframe to start initial
 showimg: 0                  #if show each image
 ifshowpoints: 1           #if pangolin show points
+
+#imu parameters       The more accurate parameters you provide, the better performance
+acc_b_n: 0.00004         # accelerometer bias random work noise standard deviation.  #0.02
+gyr_b_n: 2.0e-6       # gyroscope bias random work noise standard deviation.     #4.0e-5

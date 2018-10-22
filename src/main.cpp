@@ -18,11 +18,27 @@ int main()
     vector<string> strimgs;
     vector<double> strtimestamps;
     datareading.readImage(strimgs,strtimestamps);
+    vector<Vector3d> accs;
+    vector<Vector3d> omigas;
+    vector<double> imutimestamps;
+    DataReading::readImudata("../sfm-project/data/imu0/data.csv",accs,omigas,imutimestamps);
     readParameters("../sfm-project/config/config.yaml");
     //create vio system
     VioOdometry vioOdometry;
+    vioOdometry.Initialparameters();
 
     for(size_t i=0;i<strimgs.size();i++){
+        vector<Vector3d> slic_accs;
+        vector<Vector3d> slic_omigas;;
+        vector<double> slic_imustamps;
+        if(i>0){
+            for(size_t k=(i-1)*10;k<=(i-1)*10+10;k++){
+                slic_accs.push_back(accs[k]);
+                slic_omigas.push_back(omigas[k]);
+                slic_imustamps.push_back(imutimestamps[k]);
+            }
+        }
+        vioOdometry.ImuPreintergration(slic_accs,slic_omigas,slic_imustamps,int(i));
         Mat img=imread(strimgs[i],IMREAD_GRAYSCALE);
 
         if(EQUALIZE){

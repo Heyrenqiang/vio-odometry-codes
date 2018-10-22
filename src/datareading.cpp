@@ -20,11 +20,47 @@ void DataReading::readImage(vector<string> &strimage,vector<double> &timestamps)
             ss<<s;
             double t;
             ss>>t;
-            timestamps.push_back(t/1e9);
+            timestamps.push_back((t-1403636e12)/1e9);
         }
     }
 }
 void DataReading::readCameraParameters(){
+
+}
+
+void DataReading::readImudata(const string filedir, vector<Vector3d> &acc, vector<Vector3d> &omiga,vector<double>& imutimestamps)
+{
+    ifstream imufile(filedir);
+    acc.reserve(50000);
+    omiga.reserve(50000);
+    imutimestamps.reserve(50000);
+    string linestr;
+    size_t k=0;
+    while (getline(imufile,linestr)) {
+        stringstream ss(linestr);
+        vector<string> s;
+        if(k<=1){
+            k++;
+            continue;
+        }
+        string tempstr;
+        while(getline(ss,tempstr,',')){
+            s.push_back(tempstr);
+        }
+        vector<double> tempd;
+        double dtemp;
+        for(size_t j=0;j<s.size();j++){
+            stringstream ss(s[j]);
+            ss>>dtemp;
+            tempd.push_back(dtemp);
+        }
+        imutimestamps.push_back((tempd[0]-1403636e12)/1e9);
+        Vector3d omigatemp(tempd[1],tempd[2],tempd[3]);
+        Vector3d acctemp(tempd[4],tempd[5],tempd[6]);
+        acc.push_back(acctemp);
+        omiga.push_back(omigatemp);
+        k++;
+    }
 
 }
 
