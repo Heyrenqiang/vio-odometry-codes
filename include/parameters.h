@@ -10,8 +10,11 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include "cameramodel.h"
+#include<Eigen/Dense>
+#include<opencv2/core/eigen.hpp>
 using namespace cv;
 using namespace std;
+using namespace Eigen;
 extern int NUMOFIMAGES;
 extern std::string IMAGE_TOPIC;
 extern std::string IMU_TOPIC;
@@ -35,4 +38,9 @@ extern int STARTFRAME;
 extern bool SHOWIMG;
 extern bool IFSHOWPOINTS;
 extern double ACC_N,GYR_N,ACC_B_N,GYR_B_N;
+extern MatrixXd T_BS,T_BS_R,T_BS_t;
+extern bool MIDINTEGRATION,REINTEGRATIONBYJACOBIAN;
+
+
+
 void readParameters(string configdir);

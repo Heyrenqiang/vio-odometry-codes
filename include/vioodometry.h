@@ -17,14 +17,12 @@
 #include <ceres/rotation.h>
 #include <opencv2/core/eigen.hpp>
 
-
-
 using namespace cv;
 using namespace std;
 using namespace Eigen;
 
 
-
+//for ceras optimization
 struct ReprojectError{
     ReprojectError(double u,double v)
         :observed_u(u),observed_v(v)
@@ -56,7 +54,8 @@ struct ReprojectError{
 class VioOdometry{
 public:
     VioOdometry();
-    void Track(const Mat& img,double timestamp,int frameid);
+    void Track(const Mat& img,double timestamp,vector<Vector3d> slic_accs,vector<Vector3d> slic_omigas,
+                                                                vector<double> slic_imustamps,int frameid);
     void solvePoseofframesatbegining();
     void trangulatePointsatbegining();
     void optimizatePoseandPointsatbegining();
@@ -71,7 +70,8 @@ public:
 
     void Initialparameters();
 
-    void ImuPreintergration(vector<Vector3d>& acc,vector<Vector3d>& omiga,vector<double>& timestamp,int i);
+    void ImuPreintegration(int id);
+    void ImuMidPreintegration(int id);
 
     void getMatchedFeatures(int frontframe,int backframe,vector<pair<Point2f,Point2f>> &matchedfeatures);
 
@@ -87,17 +87,13 @@ public:
     void writeFramepose(string filepath);
 
     bool optimizatetwoFrames(int first, int second);
+    void RecoverPoseOfadjacentFrame();
+    bool VisualImuAlian();
+    void Reintegration();
+    void Showvisualimuerr();
 
 
     bool StartInitial_flag,Initialized_flag;
-
-
-    vector<Quaterniond> pre_intergration_gama;
-    vector<Vector3d> pre_intergration_alpha;
-    vector<Vector3d> pre_intergration_belta;
-
-    vector<MatrixXd> pre_jacobians;
-    vector<MatrixXd> pre_coariances;
 
 
     Feature_Track feature_Track;
@@ -106,5 +102,12 @@ public:
     SolvePose solvePose;
 
     Matrix<double,12,12> noise;
+    Matrix<double,18,18> noise_18_18;
+
+
+    Vector3d acc_bias;
+    Vector3d gyr_bias;
+
+    int curframeid;
 
 };

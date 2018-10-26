@@ -27,7 +27,7 @@ public:
     void addTrackedFeaturePointstonext(int id,Point2f p);
     void addTrackedFeaturePointstoprevious(int id,Point2f p);
     void setpose(Matrix3d &R,Vector3d &t);
-
+    void addPreInformation(vector<Vector3d> slic_accs,vector<Vector3d> slic_omigas,vector<double> slic_imustamps);
 
     bool posesolved;
     int id;
@@ -59,6 +59,7 @@ public:
     double t_pose_forba[3];
 
     double timestamp;
+    vector<int> features;
     vector<pair<int,Point2f>> featurePointscoords;
     vector<pair<int,Point3f>> featurePointscoords_norm;
     vector<pair<int,Point2f>> featurePointscoords_norm_2d;
@@ -67,6 +68,25 @@ public:
     vector<Point2f> trackedPointstonext;
     vector<Point2f> trackedPointstoprev;
 
+    //gyr and acc bias
+    Vector3d acc_bias;
+    Vector3d gyr_bias;
+    //delta gyr and acc bias,achived by alian
+    Vector3d delta_gyr_bias;
+    Vector3d delta_acc_bias;
 
+    //preintsgration item
+    Quaterniond pre_integration_pose_gama;
+    Vector3d pre_integration_pose_alpha;
+    Vector3d pre_integration_pose_beta;
 
+    MatrixXd jacobian;
+    MatrixXd covariance;
+
+    //imu data between two this frame and last frame
+    vector<Vector3d> slic_accs;
+    vector<Vector3d> slic_omigas;;
+    vector<double> slic_imustamps;
+
+    bool hasenoughimudata;
 };

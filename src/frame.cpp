@@ -7,6 +7,7 @@ Frame::Frame(){
 void Frame::addFeaturePoints(FeaturePoints featurepoint)
 {
     //featurepointsinframe.push_back(make_pair(featurepoint.pointid,featurepoint));
+    features.push_back(featurepoint.pointid);
     featurePointscoords.push_back(make_pair(featurepoint.pointid,featurepoint.pixelpoints.back().second));
     featurePointscoords_norm.push_back(make_pair(featurepoint.pointid,featurepoint.normpoints.back().second));
     featurePointscoords_norm_2d.push_back(make_pair(featurepoint.pointid,featurepoint.normpoints2d.back().second));
@@ -49,6 +50,30 @@ void Frame::setpose(Matrix3d &R,Vector3d &t)
     eigen2cv(inv_M34_pose_Rt,inv_Mat34_pose_Rt);
     eigen2cv(inv_M3d_pose_R,inv_Mat33_pose_R);
     eigen2cv(inv_V3d_pose_t,inv_Mat31_pose_t);
+}
+
+void Frame::addPreInformation(vector<Vector3d> slic_accs_,vector<Vector3d> slic_omigas_,vector<double> slic_imustamps_)
+{
+    if(slic_accs_.size()==11)
+        hasenoughimudata=true;
+    else
+        hasenoughimudata=false;
+    slic_accs=slic_accs_;
+    slic_omigas=slic_omigas_;
+    slic_imustamps=slic_imustamps_;
+
+
+    acc_bias=Vector3d::Zero();
+    gyr_bias=Vector3d::Zero();
+    pre_integration_pose_gama=Quaterniond::Identity();
+    pre_integration_pose_alpha=Vector3d::Zero();
+    pre_integration_pose_beta=Vector3d::Zero();
+
+    jacobian=MatrixXd::Identity(15,15);
+    covariance=MatrixXd::Zero(12,12);
+
+    delta_gyr_bias=Vector3d::Zero();
+    delta_acc_bias=Vector3d::Zero();
 
 }
 

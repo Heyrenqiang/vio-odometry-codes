@@ -1,19 +1,28 @@
 #include "vioodometry.h"
-
+#include"imuvisualalian.h"
 
 VioOdometry::VioOdometry()
 {
 
 }
 
-void VioOdometry::Track(const Mat& img, double timestamp, int frameid)
+void VioOdometry::Track(const Mat& img,double timestamp,vector<Vector3d> slic_accs,vector<Vector3d> slic_omigas,
+                        vector<double> slic_imustamps,int frameid)
 {
+    curframeid=frameid;
     cout.setf(ios::fixed);
     cout<<setprecision(9);
     //cout<<timestamp<<endl;
     //creat frame by image and label it by frameid
     Frame frame(timestamp,frameid);
+    frame.addPreInformation(slic_accs,slic_omigas,slic_imustamps);
     frames.push_back(frame);
+
+    //imu preintegration
+    if(MIDINTEGRATION)
+        ImuMidPreintegration(frameid);
+    else
+        ImuPreintegration(frameid);
 
     //track the feature frame by frame and creat the featurepoints,
     //each frame saw severalfeature points,each points saw sevaral frames
@@ -70,22 +79,24 @@ void VioOdometry::Track(const Mat& img, double timestamp, int frameid)
             recoverPoseofSFM(l,frameid);
             writeFramepose("../sfm-project/data/trajectory.txt");
             //initial ba optimization.
-            if(initBaOptimization(frameid-NUMOFFRAMESTOINIT+1,frameid,l)){
-                writeFramepose("../sfm-project/data/trajectoryafterba.txt");
-                cout<<"init ba successed."<<endl;
-            }
-            Quaterniond qsfm=frames[ulong(l)].q_pose_R.inverse()* frames[ulong(l+1)].q_pose_R;
-            Quaterniond qimu=pre_intergration_gama[ulong(l+1)];
-            cout<<qsfm.w()<<qsfm.x()<<qsfm.y()<<qsfm.z()<<endl;
-            cout<<qimu.w()<<qimu.x()<<qimu.y()<<qimu.z()<<endl;
+            if(!initBaOptimization(frameid-NUMOFFRAMESTOINIT+1,frameid,l)){
 
+                cout<<"init ba failed."<<endl;
+            }
+            RecoverPoseOfadjacentFrame();
+            writeFramepose("../sfm-project/data/trajectoryafterba.txt");
+
+            //Showvisualimuerr();
+
+            VisualImuAlian();
+
+            //Showvisualimuerr();
 
             vector<string> paths;
             paths.push_back("../sfm-project/data/trajectory.txt");
             paths.push_back("../sfm-project/data/trajectoryafterba.txt");
             paths.push_back("../sfm-project/data/groundtruth.txt");
             DataReading::showTrajectory(paths,0,10000);
-
 
             vector<Quaterniond> poses_R;
             vector<Vector3d> poses_t;
@@ -103,8 +114,6 @@ void VioOdometry::Track(const Mat& img, double timestamp, int frameid)
             }
             DataReading::showTrajectoryandpoints(poses_R,poses_t,points);
             cout<<"end."<<endl;
-
-
         }else{
            /*do nothing
             *
@@ -136,6 +145,15 @@ void VioOdometry::Initialparameters()
     noise.block<3,3>(3,3)=GYR_N*GYR_N*Matrix3d::Identity();
     noise.block<3,3>(6,6)=ACC_B_N*ACC_B_N*Matrix3d::Identity();
     noise.block<3,3>(9,9)=GYR_B_N*GYR_B_N*Matrix3d::Identity();
+    noise_18_18=MatrixXd::Zero(18,18);
+    noise_18_18.block<3,3>(0,0)=ACC_N*ACC_N*Matrix3d::Identity();
+    noise_18_18.block<3,3>(3,3)=GYR_N*GYR_N*Matrix3d::Identity();
+    noise_18_18.block<3,3>(6,6)=ACC_N*ACC_N*Matrix3d::Identity();
+    noise_18_18.block<3,3>(9,9)=GYR_N*GYR_N*Matrix3d::Identity();
+    noise_18_18.block<3,3>(12,12)=ACC_B_N*ACC_B_N*Matrix3d::Identity();
+    noise_18_18.block<3,3>(15,15)=GYR_B_N*GYR_B_N*Matrix3d::Identity();
+    gyr_bias=Vector3d::Zero();
+    acc_bias=Vector3d::Zero();
 }
 //get matched features between two frames
 void VioOdometry::getMatchedFeatures(int frontframe, int backframe, vector<pair<Point2f, Point2f> > &matchedfeatures)
@@ -241,10 +259,7 @@ bool VioOdometry::recoverPoseofSFM(int l, int frameid)
 
 bool VioOdometry::solveFrameByPnp(int l)
 {
-    if(l==889){
-        cout<<"893"<<endl;
-    }
-    //cout<<"hell world"<<endl;
+
     vector<Point3f> pts_3d;
     vector<Point2f> pts_2d;
     vector<Point3f> pts_3d_norm;
@@ -266,7 +281,7 @@ bool VioOdometry::solveFrameByPnp(int l)
     Mat r,revc,t,D,tmp_r;
 
     //set initial r t.
-    if(frames[ulong(l-1)].posesolved){
+    if(l>0&&frames[ulong(l-1)].posesolved){
         tmp_r=frames[ulong(l-1)].Mat33_pose_R;
         Rodrigues(tmp_r,revc);
         t=frames[ulong(l-1)].Mat31_pose_t;
@@ -503,6 +518,33 @@ bool VioOdometry::optimizatetwoFrames(int first,int second){
     return true;
 }
 
+void VioOdometry::RecoverPoseOfadjacentFrame()
+{
+    for(size_t i=frames.size()-ulong(NUMOFFRAMESTOINIT)-1;i>0;i--){
+        int numofmatchfeatures=0;
+        for(size_t j=0;j<frames[i].features.size();j++){
+            if(featurePoints[ulong(frames[i].features[j])].triangulated){
+                numofmatchfeatures++;
+            }
+        }
+        if(numofmatchfeatures>15){
+               solveFrameByPnp(int(i));
+        }
+        else{
+            return;
+        }
+    }
+    int numofmatchfeatures=0;
+    for(size_t i=0;i<frames.front().features.size();i++){
+        if(featurePoints[ulong(frames.front().features[i])].triangulated){
+            numofmatchfeatures++;
+        }
+        if(numofmatchfeatures>15){
+            solveFrameByPnp(0);
+        }
+    }
+}
+
 bool VioOdometry::initBaOptimization(int statrframe, int endframe,int l)
 {
 
@@ -660,96 +702,6 @@ void VioOdometry::triangulatePointByMinsSquare(Matrix<double,4,4> T1, Matrix<dou
         if(err(0,0)<0.001){
         }
     }
-}
-
-void VioOdometry::ImuPreintergration(vector<Vector3d> &acc, vector<Vector3d> &omiga, vector<double>& timestamp, int i)
-{
-    if(i==0){
-        Quaterniond q(1,0,0,0);
-        Vector3d s(0,0,0);
-        Vector3d v(0,0,0);
-        MatrixXd jacobian=MatrixXd::Identity(15,15);
-        MatrixXd covariance=MatrixXd::Zero(15,15);
-        pre_intergration_gama.push_back(q);
-        pre_intergration_alpha.push_back(s);
-        pre_intergration_belta.push_back(v);
-        pre_jacobians.push_back(jacobian);
-        pre_coariances.push_back(covariance);
-    }
-    else{
-        //preintergration of between two frames
-
-
-        Quaterniond q[11];
-        Vector3d v[11];
-        Vector3d s[11];
-        q[0].w()=1;
-        q[0].x()=0;
-        q[0].y()=0;
-        q[0].z()=0;
-        v->x()=0;
-        v->y()=0;
-        v->z()=0;
-        s->x()=0;
-        s->y()=0;
-        s->z()=0;
-
-        double deltat=0.005,deltatsquare=deltat*deltat;
-
-        MatrixXd jacobian=MatrixXd::Identity(15,15);
-        MatrixXd covariance=MatrixXd::Zero(15,15);
-        for(size_t k=1;k<acc.size();k++){
-            Quaterniond deltaq(1,0.5*omiga[k-1].x()*deltat,0.5*omiga[k-1].y()*deltat,0.5*omiga[k-1].z()*deltat);
-            //Quaterniond deltaq(1,0.5*(omiga[k-1].x()+omiga[k].x())*0.5*deltat,
-                    //0.5*(omiga[k-1].y()+omiga[k].y())*0.5*deltat,0.5*(omiga[k-1].z()+omiga[k].z())*0.5*deltat);
-            q[k]=q[k-1]*deltaq;
-            Matrix3d R_q(q[k-1]);
-            v[k]=v[k-1]+R_q*acc[k-1]*deltat;
-            s[k]=s[k-1]+v[k-1]*deltat+0.5*R_q*acc[k-1]*deltatsquare;
-
-            Vector3d b_a_t(0,0,0);
-            Vector3d acc_min_b_a_t=acc[k-1]-b_a_t;
-            Matrix3d acc_min_b_a_t_skew;
-            acc_min_b_a_t_skew<<0,-acc_min_b_a_t(2),acc_min_b_a_t(1),
-                    acc_min_b_a_t(2),0,-acc_min_b_a_t(0),
-                    -acc_min_b_a_t(1),acc_min_b_a_t(0),0;
-            Vector3d b_w_t(0,0,0);
-            Vector3d omiga_min_b_w_t=omiga[k-1]-b_w_t;
-            Matrix3d omiga_min_b_w_t_skew;
-            omiga_min_b_w_t_skew<<0,-omiga_min_b_w_t(2),omiga_min_b_w_t(1),
-                    omiga_min_b_w_t(2),0,-omiga_min_b_w_t(0),
-                    -omiga_min_b_w_t(1),omiga_min_b_w_t(0),0;
-
-            MatrixXd F=MatrixXd::Zero(15,15);
-            MatrixXd V=MatrixXd::Zero(15,12);
-            F.block<3,3>(0,0)=Matrix3d::Identity();
-            F.block<3,3>(3,3)=Matrix3d::Identity();
-            F.block<3,3>(6,6)=Matrix3d::Identity()-omiga_min_b_w_t_skew;
-            F.block<3,3>(9,9)=Matrix3d::Identity();
-            F.block<3,3>(12,12)=Matrix3d::Identity();
-            F.block<3,3>(0,3)=Matrix3d::Identity();
-            F.block<3,3>(3,6)=-R_q*acc_min_b_a_t_skew;
-            F.block<3,3>(3,9)=-R_q;
-            F.block<3,3>(6,12)=-Matrix3d::Identity();
-
-            V.block<3,3>(3,0)=-R_q;
-            V.block<3,3>(6,3)=-Matrix3d::Identity();
-            V.block<3,3>(9,6)=Matrix3d::Identity();
-            V.block<3,3>(12,9)=Matrix3d::Identity();
-
-            jacobian=F*jacobian;
-
-            covariance=F*covariance*F.transpose()+V*noise*V.transpose();
-
-        }
-        pre_intergration_alpha.push_back(s[10]);
-        pre_intergration_belta.push_back(v[10]);
-        pre_intergration_gama.push_back(q[10]);
-        pre_jacobians.push_back(jacobian);
-        pre_coariances.push_back(covariance);
-        //cout<<pre_coariances.back()<<endl;
-    }
-
 }
 
 

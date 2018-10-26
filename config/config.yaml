@@ -81,11 +81,22 @@ save_image: 1                   # save image in pose graph for visualization pru
 visualize_imu_forward: 0        # output imu forward propogation to achieve low latency and high frequence results
 visualize_camera_size: 0.4      # size of camera marker in RVIZ
 #other
-numofframestoinit: 10           #initial sfm frames
-startframe: 8                 #startframe to start initial
+numofframestoinit: 12           #initial sfm frames
+startframe: 300                 #startframe to start initial
 showimg: 0                  #if show each image
 ifshowpoints: 1           #if pangolin show points
+midintegration: 0         #if midintegration
+reintegrationbyjacobian: 1     #if reintegration by jacobian update
 
 #imu parameters       The more accurate parameters you provide, the better performance
 acc_b_n: 0.00004         # accelerometer bias random work noise standard deviation.  #0.02
 gyr_b_n: 2.0e-6       # gyroscope bias random work noise standard deviation.     #4.0e-5
+# Sensor extrinsics wrt. the body-frame.
+T_BS: !!opencv-matrix
+  cols: 4
+  rows: 4
+  dt: d
+  data: [0.0148655429818, -0.999880929698, 0.00414029679422, -0.0216401454975,
+         0.999557249008, 0.0149672133247, 0.025715529948, -0.064676986768,
+        -0.0257744366974, 0.00375618835797, 0.999660727178, 0.00981073058949,
+         0.0, 0.0, 0.0, 1.0]
